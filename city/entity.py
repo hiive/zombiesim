@@ -5,24 +5,33 @@ from abc import abstractmethod
 from abc import ABC
 
 from city.drawing import ScreenData
+import numpy as np
+
+from city.vectors import distance
 
 
 class Entity(ABC):
     current_id = 0
 
-    def __init__(self, city, road=None, x=None, y=None):
+    def __init__(self, city, road=None, x=None, y=None, road_population_densities=None):
         Entity.current_id += 1
         self.id = Entity.current_id
+        self.road = city.roads[random.randint(0, len(city.roads) - 1)]
+        if road is None:
+            if road_population_densities is None:
+                self.road = city.roads[random.randint(0, len(city.roads) - 1)]
+            else:
+                self.road = np.random.choice(city.roads, p=road_population_densities)
+        else:
+            self.road = road
 
-        if road is None or x is None or y is None:
-            self.road = city.roads[random.randint(0, len(city.roads)-1)]
+        if x is None or y is None:
             sx, sy = self.road.start
             ex, ey = self.road.end
             rp = random.random()
             self.x = sx + rp * (ex - sx)
             self.y = sy + rp * (ey - sy)
         else:
-            self.road = road
             self.x = x
             self.y = y
 
@@ -30,8 +39,11 @@ class Entity(ABC):
         self.direction = 1 if random.random() > 0.5 else -1
         self.is_dead = False
         self.is_panicked = False
-        self.panic_time_remaining = 0
         self.is_infected = False
+        self.near_dead_things = False
+        self.incubation_time_remaining = None
+        self.panic_time_remaining = 0
+        self.panic_time_initial = 0
 
     def get_unit_road_vector(self):
         sx, sy = self.road.start
@@ -42,7 +54,7 @@ class Entity(ABC):
         dy /= l
         return dx, dy
 
-    def random_wander(self, speed, direction_change_probability=0.0):
+    def random_wander(self, speed, direction_change_probability=0.0, death_check_range=0.0):
         dx, dy = self.get_unit_road_vector()
 
         self.x += dx * self.direction * speed
@@ -74,10 +86,22 @@ class Entity(ABC):
 
         if links is not None:
             # time to change roads
+
+            # avoid going down roads with dead things
+            if death_check_range > 0:
+                self.near_dead_things = False
+                near_dead_things = False
+                for link in list(links):
+                    near_dead_things = any([e.is_dead for e in link.entities if
+                                            distance((self.x, self.y), (e.x, e.y)) < death_check_range])
+                    if near_dead_things:
+                        self.near_dead_things = True
+                        links.remove(link)
+
             if len(links) == 0:
                 self.direction = - self.direction
             else:
-                #if random.random() < 0.5:
+                # if random.random() < 0.5:
                 #    self.direction = -self.direction
                 self.road.entities.remove(self)
                 self.road = links[random.randint(0, len(links) - 1)]

@@ -14,6 +14,8 @@ from . import build_gen
 from . import drawing
 import collections
 
+import numpy as np
+
 from .survivor import Survivor
 from .zombie import Zombie
 
@@ -66,9 +68,12 @@ def main():
         city_labels.append((str(road.global_id),
                             road.point_at(0.5)))
 
+    road_population_densities = np.array([city.pop.at_line(r) for r in city.roads])
+    road_population_densities /= np.sum(road_population_densities)
+
     survivors = []
     for _ in range(0, config.INIT_SURVIVORS):
-        survivors.append(Survivor(city))
+        survivors.append(Survivor(city, road_population_densities=road_population_densities))
 
     for _ in range(0, config.INIT_INFECTED):
         infected = Survivor(city)

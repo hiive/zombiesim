@@ -146,7 +146,7 @@ def lerp_(v1, v2, f):
 
 
 def draw_survivor(x, y, data: ScreenData, incubating, speed_factor=0):
-    r1, g1, b1 = (192, 192, 0) if incubating else (128, 96, 128)
+    r1, g1, b1 = (192, 192, 0) if incubating else (160, 96, 160)
     r2, g2, b2 = (255, 255, 0) if incubating else (255, 0, 255)
 
     color = (max(0, min(lerp_(r1, r2, speed_factor), 255)),

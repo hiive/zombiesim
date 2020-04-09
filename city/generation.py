@@ -10,6 +10,7 @@ from . import vectors
 import math
 import collections
 from typing import List, Dict, Tuple, Set
+import numpy as np
 
 watch_total = stop_watch.Stopwatch()
 
@@ -29,6 +30,7 @@ def generate(manual_seed: int = None) -> City:
     else:
         seed = time.process_time()
     random.seed(seed)
+    np.random.seed(seed)
     pop_seed = (random.randrange(-1, 1) * 1000000000,
                 random.randrange(-1, 1) * 1000000000)
 
