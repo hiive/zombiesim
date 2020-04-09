@@ -1,0 +1,6 @@
+OSX pygame prerequisites:
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+brew install sdl sdl_image sdl_ttf portmidi libogg libvorbis
+brew install sdl_mixer
+
+(See https://kidscancode.org/blog/2015/09/pygame_install/)
