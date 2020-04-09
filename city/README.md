@@ -1,4 +1,6 @@
 # City Generator
+Taken from https://github.com/sam-masaki/city-generator
+
 This is a script that creates procedural city maps.
 
 ![A screenshot](screenshot.png)
