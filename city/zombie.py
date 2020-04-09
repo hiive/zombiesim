@@ -2,10 +2,8 @@ from . import config
 from .drawing import ScreenData, draw_zombie, draw_corpse, draw_label_world
 from .entity import Entity
 
-import math
 import random
 
-from .survivor import Survivor
 from .vectors import distance
 
 
@@ -38,41 +36,43 @@ class Zombie(Entity):
             self.init_delay -= 1
             return
 
-        self.random_wander(speed=config.ZOMBIE_SPEED,
-                           direction_change_probability=config.ZOMBIE_WANDER_DIRECTION_CHANGE_PROBABILITY)
+        speed = config.ZOMBIE_HUNT_SPEED if self.near_live_things else config.ZOMBIE_SPEED
+        self.random_wander(speed=speed,
+                           direction_change_probability=config.ZOMBIE_WANDER_DIRECTION_CHANGE_PROBABILITY,
+                           entity_check_range=config.ZOMBIE_HUNT_RANGE,
+                           towards_higher_density=True,
+                           target_entity_type='Survivor')
 
         # check for survivors nearby
-        sorted_survivors = []
-        for entity in [e for e in self.road.entities if isinstance(e, Survivor)]:
-            if entity.is_dead:  # or entity.is_infected:
-                continue
-            if distance((self.x, self.y), (entity.x, entity.y)) >= config.ZOMBIE_ATTACK_RANGE:
-                continue
-            if entity.is_infected:
-                # add infected to end
-                sorted_survivors.append(entity)
-            else:
-                # add uninfected to beginning
-                sorted_survivors.insert(0, entity)
+        victim_and_distance = None
+        for survivor in [e for e in self.road.entities if type(e).__name__ == 'Survivor']:
+            if survivor.is_dead:  # or survivor.is_infected:
+                continue  # dead
+            d = distance((self.x, self.y), (survivor.x, survivor.y))
+            if d >= config.ZOMBIE_ATTACK_RANGE:
+                continue  # out of attack range
+            victim_and_distance = (survivor, d)
+            if not survivor.is_infected:
+                # the loop breaks if an uninfected is selected, so the
+                # victim will be uninfected by preference
+                break
 
-        if len(sorted_survivors) == 0:
+        # no-one to attack
+        if victim_and_distance is None:
             return
 
-        entity_to_attack = sorted_survivors[0]
-        if distance((self.x, self.y), (entity_to_attack.x, entity_to_attack.y)) < config.ZOMBIE_ATTACK_RANGE:
-            r = random.random()
-            distance_factor = 1 - distance((entity_to_attack.x, entity_to_attack.y),
-                                           (self.x, self.y)) / config.ZOMBIE_ATTACK_RANGE
+        # attack the victim
+        victim, victim_distance = victim_and_distance
+        attack_modifier = (config.ZOMBIE_DIFFERENT_FACING_ATTACK_MODIFIER
+                           if self.direction != victim.direction
+                           else config.ZOMBIE_SAME_FACING_ATTACK_MODIFIER)
+        distance_factor = 1.0 - (victim_distance / (attack_modifier * config.ZOMBIE_ATTACK_RANGE))
 
-            if r < config.ZOMBIE_KILL_PROBABILITY * distance_factor:
-                entity_to_attack.is_dead = True
-            elif r < config.ZOMBIE_WOUND_PROBABILITY * distance_factor:
-                entity_to_attack.infect()
+        r = random.random()
+        if r < config.ZOMBIE_KILL_PROBABILITY * distance_factor:
+            victim.is_dead = True
+        elif r < config.ZOMBIE_WOUND_PROBABILITY * distance_factor:
+            victim.infect()
 
-            if random.random() < config.ZOMBIE_DESTRUCTION_PROBABILITY * distance_factor:
-                self.is_destroyed = True
-
-
-
-
-
+        if random.random() < config.ZOMBIE_DESTRUCTION_PROBABILITY * distance_factor:
+            self.is_destroyed = True

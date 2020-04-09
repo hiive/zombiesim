@@ -7,7 +7,7 @@ from abc import ABC
 from city.drawing import ScreenData
 import numpy as np
 
-from city.vectors import distance
+from city.vectors import distance, distance2
 
 
 class Entity(ABC):
@@ -41,6 +41,7 @@ class Entity(ABC):
         self.is_panicked = False
         self.is_infected = False
         self.near_dead_things = False
+        self.near_live_things = False
         self.incubation_time_remaining = None
         self.panic_time_remaining = 0
         self.panic_time_initial = 0
@@ -54,15 +55,15 @@ class Entity(ABC):
         dy /= l
         return dx, dy
 
-    def random_wander(self, speed, direction_change_probability=0.0, death_check_range=0.0):
+    def random_wander(self, speed, direction_change_probability=0.0, entity_check_range=0.0,
+                      towards_higher_density=None, target_entity_type=None):
         dx, dy = self.get_unit_road_vector()
 
         self.x += dx * self.direction * speed
         self.y += dy * self.direction * speed
 
-        # is the zombie at the end of the road
+        # is the entity heading towards the start or end of the road
         (sx, sy), (ex, ey) = self.road.start, self.road.end
-        links = None
         xd = (ex - sx)
         if xd == 0.0:
             xd = 1.0
@@ -75,36 +76,65 @@ class Entity(ABC):
 
         rt = xf if math.fabs(xd) > math.fabs(yd) else yf
 
+        # calculate links if we're near the start/end of a road
+        links = None
+        road_change = False
         if rt <= 0:
             # we're at the beginning of the road.
             links = list(self.road.links_s)
+            road_change = True
         elif rt >= 1:
             # we're at the end of the road.
             links = list(self.road.links_e)
+            road_change = True
         elif random.random() < direction_change_probability:
             self.direction = - self.direction
 
-        if links is not None:
-            # time to change roads
+        # avoid going down roads with dead things
+        if entity_check_range > 0:
+            # add current road to list
+            if links is None:
+                links = [self.road]
+            else:
+                links.append(self.road)
+            dead_links = set()
+            # figure out if we're near anything dead/alive
+            self.near_dead_things = False
+            self.near_live_things = False
+            for link in links:
+                near_dead_things = any([True for e in link.entities if e.is_dead and
+                                        distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
+                if near_dead_things:
+                    dead_links.add(link)
+                    self.near_dead_things = True
+                near_live_things = any([True for e in link.entities if not e.is_dead and
+                                        distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
+                if near_live_things:
+                    self.near_live_things = True
 
-            # avoid going down roads with dead things
-            if death_check_range > 0:
-                self.near_dead_things = False
-                near_dead_things = False
-                for link in list(links):
-                    near_dead_things = any([e.is_dead for e in link.entities if
-                                            distance((self.x, self.y), (e.x, e.y)) < death_check_range])
-                    if near_dead_things:
-                        self.near_dead_things = True
-                        links.remove(link)
+            # remove current road from list.
+            links.remove(self.road)
+            # remove any dead links
+            links = list(set(links) - dead_links)
 
+        # if links is set, then we're near the beginning/end of a road.
+        # it may be empty, but we need to process it
+        if road_change:
+            # need to change road/direction
             if len(links) == 0:
                 self.direction = - self.direction
             else:
-                # if random.random() < 0.5:
-                #    self.direction = -self.direction
+                # time to change roads
                 self.road.entities.remove(self)
-                self.road = links[random.randint(0, len(links) - 1)]
+                if towards_higher_density is None or target_entity_type is None:
+                    self.road = links[random.randint(0, len(links) - 1)]
+                else:
+                    dm = -1 if towards_higher_density else 1
+                    density_sorted_roads = sorted(links, key=lambda l: dm * (len([e for e in l.entities
+                                                                             if type(e).__name__ == target_entity_type])))
+
+                    self.road = density_sorted_roads[0]
+
                 self.road.entities.append(self)
 
             # check start and end and update self position

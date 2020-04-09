@@ -7,9 +7,14 @@ from . import roads
 class Heatmap:
     def __init__(self, seed):
         self.seed = seed
+        self.cache = {}
 
     def at_line(self, seg: roads.Segment) -> float:
-        return (self.at_point(seg.start) + self.at_point(seg.end)) / 2
+        if seg in self.cache.keys():
+            return self.cache[seg]
+        value = (self.at_point(seg.start) + self.at_point(seg.end)) / 2
+        self.cache[seg] = value
+        return value
 
     def at_point(self, point: Tuple[float, float]) -> float:
         x = point[0] + self.seed[0]

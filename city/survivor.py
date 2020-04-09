@@ -2,10 +2,10 @@ from . import config
 from .drawing import ScreenData, draw_survivor, draw_label_world
 from .entity import Entity
 
-import math
 import random
 
 from .vectors import distance
+from .zombie import Zombie
 
 
 class Survivor(Entity):
@@ -18,6 +18,7 @@ class Survivor(Entity):
         self.is_panicked = False
         self.is_infected = False
         self.speed = config.SURVIVOR_SPEED
+        self.target_entity_type = Zombie
 
     def infect(self):
         self.is_infected = True
@@ -29,7 +30,67 @@ class Survivor(Entity):
         # if self.near_dead_things:
         #      draw_label_world((f"{self.id}", (self.x + 10, self.y)), screen_data, 1)
 
-    def check_for_secondary_panic(self):
+    def move(self):
+        towards_higher_density = None
+        target_entity_type = None
+
+        if self.is_infected:
+            # if we're infected, move towards higher densities of people
+            towards_higher_density = True
+            target_entity_type = 'Survivor'
+        elif self.is_panicked:
+            # if we're panicked, run away from everyone
+            towards_higher_density = False
+            target_entity_type = 'Entity'
+
+        self.random_wander(speed=self.speed,
+                           direction_change_probability=config.SURVIVOR_WANDER_DIRECTION_CHANGE_PROBABILITY,
+                           entity_check_range=config.SURVIVOR_PANIC_RANGE,
+                           towards_higher_density=towards_higher_density,
+                           target_entity_type=target_entity_type)
+
+        self.__check_for_panic()
+
+        speed_boost = 0
+        if self.is_panicked:
+            speed_boost = config.SURVIVOR_PANIC_SPEED - config.SURVIVOR_SPEED
+            speed_boost *= self.panic_time_remaining / self.panic_time_initial
+
+        self.speed = config.SURVIVOR_SPEED + speed_boost
+
+        if self.incubation_time_remaining is not None:
+            if self.incubation_time_remaining > 0:
+                self.incubation_time_remaining -= 1
+            if self.incubation_time_remaining <= 0:
+                self.is_dead = True
+
+    def __check_for_panic(self):
+        # check for scary things nearby
+        if not self.is_panicked:
+            panic_time = 0
+
+            if self.near_dead_things:
+                panic_probability = config.SURVIVOR_SEES_DEATH_PANIC_PROBABILITY
+            else:
+                panic_probability = self.__check_for_secondary_panic()
+
+            if random.random() < panic_probability:
+                panic_time = random.randint(0, config.SURVIVOR_PANIC_DURATION)
+
+            if panic_time > 0:
+                if self.is_infected:
+                    panic_time *= int(round(config.INFECTED_PANIC_TIME_MULTIPLIER))
+                if self.panic_time_remaining == 0:
+                    self.direction = -self.direction
+                    self.panic_time_remaining = panic_time
+                    self.panic_time_initial = panic_time
+
+        if self.panic_time_remaining > 0:
+            self.panic_time_remaining -= 1
+
+        self.is_panicked = self.panic_time_remaining > 0
+
+    def __check_for_secondary_panic(self):
         panic_probability = 0
         for entity in self.road.entities:
             if self == entity or entity.is_dead:
@@ -50,43 +111,3 @@ class Survivor(Entity):
                 panic_probability = pp
         return panic_probability
 
-    def move(self):
-        self.random_wander(speed=self.speed,
-                           direction_change_probability=config.SURVIVOR_WANDER_DIRECTION_CHANGE_PROBABILITY,
-                           death_check_range=config.SURVIVOR_PANIC_RANGE)
-
-        # check for scary things nearby
-        panic_time = 0
-        panic_probability = 0
-        if not self.is_panicked:
-            panic_probability = self.check_for_secondary_panic()
-            if self.near_dead_things and panic_probability < config.SURVIVOR_SEES_DEATH_PANIC_PROBABILITY:
-                panic_probability = config.SURVIVOR_SEES_DEATH_PANIC_PROBABILITY
-
-            if random.random() < panic_probability:
-                panic_time = random.randint(0, config.SURVIVOR_PANIC_DURATION)
-
-            if panic_time > 0:
-                if self.is_infected:
-                    panic_time *= int(round(config.INFECTED_PANIC_TIME_MULTIPLIER))
-                if self.panic_time_remaining == 0:
-                    self.direction = -self.direction
-                    self.panic_time_remaining = panic_time
-                    self.panic_time_initial = panic_time
-
-        if self.panic_time_remaining > 0:
-            self.panic_time_remaining -= 1
-
-        self.is_panicked = self.panic_time_remaining > 0
-        speed_boost = 0
-        if self.is_panicked:
-            speed_boost = config.SURVIVOR_PANIC_SPEED - config.SURVIVOR_SPEED
-            speed_boost *= self.panic_time_remaining / self.panic_time_initial
-
-        self.speed = config.SURVIVOR_SPEED + speed_boost
-
-        if self.incubation_time_remaining is not None:
-            if self.incubation_time_remaining > 0:
-                self.incubation_time_remaining -= 1
-            if self.incubation_time_remaining <= 0:
-                self.is_dead = True

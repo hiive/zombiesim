@@ -196,27 +196,9 @@ def main():
                     if (x, y) in city.sectors:
                         drawing.draw_all_roads(city.sectors[(x, y)],
                                                screen_data)
-
-        drawing.draw_roads_selected(selection, screen_data)
-        drawing.draw_roads_path(path_data, screen_data)
-
-        if debug.SHOW_INFO:
-            debug_labels = debug.labels(screen_data, input_data,
-                                        path_data, selection, city, survivors, zombies)
-
-            for x in range(len(debug_labels[0])):
-                label_pos = (10, 10 + x * 15)
-                drawing.draw_label_screen((debug_labels[0][x], label_pos),
-                                          screen_data, 1)
-
-            for x in range(len(debug_labels[1])):
-                label_pos = (config.SCREEN_RES[0] - 10, 10 + x * 15)
-                drawing.draw_label_screen((debug_labels[1][x], label_pos),
-                                          screen_data, -1)
-
-        if debug.SHOW_ROAD_ORDER:
-            for label in city_labels:
-                drawing.draw_label_world(label, screen_data, 1)
+        if 0:
+            drawing.draw_roads_selected(selection, screen_data)
+            drawing.draw_roads_path(path_data, screen_data)
 
         # move and draw zombies
         for zombie in zombies:
@@ -237,6 +219,25 @@ def main():
             zombie.is_destroyed = random.random() > config.ZOMBIE_RAISE_CHANCE
             zombies.append(zombie)
             survivors.remove(survivor)
+
+        # show info
+        if debug.SHOW_INFO:
+            debug_labels = debug.labels(screen_data, input_data,
+                                        path_data, selection, city, survivors, zombies)
+
+            for x in range(len(debug_labels[0])):
+                label_pos = (10, 10 + x * 15)
+                drawing.draw_label_screen((debug_labels[0][x], label_pos),
+                                          screen_data, 1)
+
+            for x in range(len(debug_labels[1])):
+                label_pos = (config.SCREEN_RES[0] - 10, 10 + x * 15)
+                drawing.draw_label_screen((debug_labels[1][x], label_pos),
+                                          screen_data, -1)
+
+        if debug.SHOW_ROAD_ORDER:
+            for label in city_labels:
+                drawing.draw_label_world(label, screen_data, 1)
 
         pygame.display.flip()
 
@@ -293,6 +294,7 @@ def road_near_point(screen_pos: Tuple[float, float],
 
 
 def selection_from_road(selected_road):
+    return
     if selected_road is not None:
         start_ids = []
         end_ids = []
