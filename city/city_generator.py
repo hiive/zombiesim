@@ -15,6 +15,7 @@ from . import drawing
 import collections
 
 import numpy as np
+import pandas as pd
 
 from .survivor import Survivor
 from .zombie import Zombie
@@ -87,6 +88,9 @@ def main():
     prev_time = pygame.time.get_ticks()
 
     running = True
+    iteration = 0
+    last_gathered_iteration = 0
+    raw_stats = []
     while running:
         if pygame.time.get_ticks() - prev_time < 16:
             continue
@@ -158,7 +162,7 @@ def main():
         # Drawing
         screen_data.screen.fill((0, 0, 0))
         if debug.SHOW_HEATMAP:
-            drawing.draw_heatmap(50, city, screen_data)
+            drawing.draw_popmap(50, survivors, zombies, screen_data)
         if debug.SHOW_SECTORS:
             drawing.draw_sectors(screen_data)
 
@@ -200,6 +204,22 @@ def main():
             drawing.draw_roads_selected(selection, screen_data)
             drawing.draw_roads_path(path_data, screen_data)
 
+        # gather entity stats
+        if iteration % 12 == 0:  # assume five seconds per iteration
+            last_gathered_iteration = iteration
+            raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
+
+        # s, i, p, z, c
+        survivor_count = len(survivors)
+        if survivor_count == 0:  # iteration == 62:
+            if iteration > last_gathered_iteration:
+                raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
+            sector_stats = pd.DataFrame(data=raw_stats)
+            sector_stats.to_pickle('sector_stats.pk')
+            sector_stats.to_csv('sector_stats.csv')
+            raw_stats = {}
+            return
+
         # move and draw zombies
         for zombie in zombies:
             zombie.move()
@@ -240,6 +260,57 @@ def main():
                 drawing.draw_label_world(label, screen_data, 1)
 
         pygame.display.flip()
+        iteration += 1
+
+
+def get_raw_stats_for_iteration(iteration, survivors, zombies):
+    entity_counts_by_sector = get_entity_sector_counts(survivors, zombies)
+    for sector in entity_counts_by_sector.keys():
+        s, i, p, z, c = entity_counts_by_sector[sector]
+        yield {
+            'iteration': iteration,
+            'sector_x': sector[0],
+            'sector_y': sector[1],
+            'survivors': s,
+            'infected': i,
+            'panicked': p,
+            'zombies': z,
+            'corpses': c,
+        }
+
+def get_entity_sector_counts(survivors, zombies):
+    sector_counts = {}
+    """
+    survivor_count = sum([1 for s in survivors if not s.is_infected])
+    infected_count = sum([1 for s in survivors if s.is_infected])
+    panicked_count = sum([1 for s in survivors if s.is_panicked])
+    corpse_count = sum([1 for z in zombies if z.is_corpse()])
+    zombie_count = sum([1 for z in zombies if not z.is_corpse()])
+
+    """
+    for survivor in survivors:
+        sector = sectors.containing_sector((survivor.x, survivor.y))
+        if sector not in sector_counts.keys():
+            sector_counts[sector] = (0, 0, 0, 0, 0)
+        s, i, p, z, c = sector_counts[sector]
+        s += 1
+        if survivor.is_infected:
+            i += 1
+        if survivor.is_panicked:
+            p += 1
+        sector_counts[sector] = s, i, p, z, c
+
+    for zombie in zombies:
+        sector = sectors.containing_sector((zombie.x, zombie.y))
+        if sector not in sector_counts.keys():
+            sector_counts[sector] = (0, 0, 0, 0, 0)
+        s, i, p, z, c = sector_counts[sector]
+        if zombie.is_corpse():
+            c += 1
+        else:
+            z += 1
+        sector_counts[sector] = s, i, p, z, c
+    return sector_counts
 
 
 def handle_keys_debug(key):

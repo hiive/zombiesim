@@ -41,7 +41,8 @@ class Zombie(Entity):
                            direction_change_probability=config.ZOMBIE_WANDER_DIRECTION_CHANGE_PROBABILITY,
                            entity_check_range=config.ZOMBIE_HUNT_RANGE,
                            towards_higher_density=True,
-                           target_entity_type='Survivor')
+                           target_entity_type='Survivor',
+                           target_follow_probability=config.ZOMBIE_TARGET_FOLLOW_PROBABILITY)
 
         # check for survivors nearby
         victim_and_distance = None

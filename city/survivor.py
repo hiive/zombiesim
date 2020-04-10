@@ -47,7 +47,8 @@ class Survivor(Entity):
                            direction_change_probability=config.SURVIVOR_WANDER_DIRECTION_CHANGE_PROBABILITY,
                            entity_check_range=config.SURVIVOR_PANIC_RANGE,
                            towards_higher_density=towards_higher_density,
-                           target_entity_type=target_entity_type)
+                           target_entity_type=target_entity_type,
+                           target_follow_probability=config.SURVIVOR_TARGET_FOLLOW_PROBABILITY)
 
         self.__check_for_panic()
 

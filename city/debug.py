@@ -28,7 +28,7 @@ def labels(screen_data, input_data, path_data, selection, city, survivors, zombi
     debug_labels_left.append(f"Pan: {px:.2f}, {py:.2f}")
     debug_labels_left.append(f"Zoom: {screen_data.zoom:.2f}")
 
-    survivor_count = sum([1 for s in survivors if not s.is_infected])
+    survivor_count = len(survivors)  # sum([1 for s in survivors if not s.is_infected])
     infected_count = sum([1 for s in survivors if s.is_infected])
     panicked_count = sum([1 for s in survivors if s.is_panicked])
     corpse_count = sum([1 for z in zombies if z.is_corpse()])

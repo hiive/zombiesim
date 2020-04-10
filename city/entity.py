@@ -56,7 +56,7 @@ class Entity(ABC):
         return dx, dy
 
     def random_wander(self, speed, direction_change_probability=0.0, entity_check_range=0.0,
-                      towards_higher_density=None, target_entity_type=None):
+                      towards_higher_density=None, target_entity_type=None, target_follow_probability=1.9):
         dx, dy = self.get_unit_road_vector()
 
         self.x += dx * self.direction * speed
@@ -126,12 +126,14 @@ class Entity(ABC):
             else:
                 # time to change roads
                 self.road.entities.remove(self)
-                if towards_higher_density is None or target_entity_type is None:
+                follow_target = random.random() < target_follow_probability
+                if towards_higher_density is None or target_entity_type is None or follow_target:
                     self.road = links[random.randint(0, len(links) - 1)]
                 else:
                     dm = -1 if towards_higher_density else 1
                     density_sorted_roads = sorted(links, key=lambda l: dm * (len([e for e in l.entities
-                                                                             if type(e).__name__ == target_entity_type])))
+                                                                             if type(e).__name__ == target_entity_type])
+                                                                             ))
 
                     self.road = density_sorted_roads[0]
 

@@ -1,4 +1,4 @@
-from . import config
+from . import config, sectors
 from . import debug
 from . import pathing
 from . import snap_type as st
@@ -178,13 +178,56 @@ def draw_heatmap(square_size: int, city: generation.City, data: ScreenData):
             screen_point = (x * square_size,
                             y * square_size)
             world_point = screen_to_world(screen_point, data.pan, data.zoom)
-
             intensity = city.pop.at_point(world_point)
             color = (0, max(min(intensity * 83, 255), 0), 0)
             pos = (screen_point[0] - (square_size / 2), screen_point[1] - (square_size / 2))
             dim = (square_size, square_size)
 
             pygame.draw.rect(data.screen, color, pygame.Rect(pos, dim))
+
+
+def draw_popmap(square_size: int, survivors, zombies, data: ScreenData):
+    return
+    sector_counts = {}
+    s_max_val = 0
+    z_max_val = 0
+    for s in survivors:
+        sector = sectors.containing_sector((s.x, s.y))
+        if sector not in sector_counts.keys():
+            sector_counts[sector] = (0, 0)
+        s, z = sector_counts[sector]
+        s += 1
+        sector_counts[sector] = s, z
+        if s > s_max_val:
+            s_max_val = s
+
+    for z in zombies:
+        sector = sectors.containing_sector((z.x, z.y))
+        if sector not in sector_counts.keys():
+            sector_counts[sector] = (0, 0)
+        s, z = sector_counts[sector]
+        z += 1
+        sector_counts[sector] = s, z
+        if z > z_max_val:
+            z_max_val = z
+
+    total_pop = len(survivors) + len(zombies)
+    # z_max_val /= total_pop
+    # s_max_val /= total_pop
+    """ Draws the population map to the screen in the given ScreenData """
+    for sector in sector_counts:
+        s, z = sector_counts[sector]
+        # world_point, s_intensity, z_intensity = plot
+
+        s_intensity = 0 if s_max_val == 0 else int(max(min(96 * s / s_max_val, 255), 0))
+        z_intensity = 0 if z_max_val == 0 else int(max(min(96 * z / z_max_val, 255), 0))
+        color = (s_intensity, z_intensity, 0)
+
+        world_point = sectors.to_point(sector)
+        screen_point = world_to_screen(world_point, data.pan, data.zoom)
+        dim = world_to_screen((square_size, square_size), data.pan, data.zoom)
+        pos = (screen_point[0] - (dim[0] / 2), screen_point[1] - (dim[1] / 2))
+        pygame.draw.rect(data.screen, color, pygame.Rect(pos, dim))
 
 
 def draw_sectors(data: ScreenData):
