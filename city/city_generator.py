@@ -210,14 +210,13 @@ def main():
             raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
 
         # s, i, p, z, c
-        survivor_count = len(survivors)
-        if survivor_count == 0:  # iteration == 62:
+        any_survivors = any([1 for s in survivors if not s.is_infected])
+        if not any_survivors:  # iteration == 62:
             if iteration > last_gathered_iteration:
                 raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
             sector_stats = pd.DataFrame(data=raw_stats)
-            sector_stats.to_pickle('sector_stats.pk')
-            sector_stats.to_csv('sector_stats.csv')
-            raw_stats = {}
+            sector_stats.to_pickle(f'data/sector_stats_{config.ROAD_SEED}.pk')
+            sector_stats.to_csv(f'data/sector_stats_{config.ROAD_SEED}.csv')
             return
 
         # move and draw zombies
