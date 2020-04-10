@@ -205,7 +205,7 @@ def main():
             drawing.draw_roads_path(path_data, screen_data)
 
         # gather entity stats
-        if iteration % 12 == 0:  # assume five seconds per iteration
+        if iteration % 12 == 0:  # assume one minute per iteration
             last_gathered_iteration = iteration
             raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
 
@@ -214,9 +214,20 @@ def main():
         if not any_survivors:  # iteration == 62:
             if iteration > last_gathered_iteration:
                 raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
-            sector_stats = pd.DataFrame(data=raw_stats)
-            sector_stats.to_pickle(f'data/sector_stats_{config.ROAD_SEED}.pk')
-            sector_stats.to_csv(f'data/sector_stats_{config.ROAD_SEED}.csv')
+            raw_stats_df = pd.DataFrame(data=raw_stats)
+            # sector_stats_df = raw_stats_df.groupby(['iteration', 'sector_x', 'sector_y']).aggregate(np.sum)
+
+            summary_columns = ['iteration', 'survivors', 'infected', 'panicked', 'zombies', 'corpses']
+            summary_stats_df = raw_stats_df[summary_columns].groupby(['iteration']).aggregate(np.sum)
+
+            raw_stats_df.to_pickle(f'data/raw_stats_{config.ROAD_SEED}.pk')
+            raw_stats_df.to_csv(f'data/raw_stats_{config.ROAD_SEED}.csv')
+
+            # sector_stats_df.to_pickle(f'data/sector_stats_{config.ROAD_SEED}.pk')
+            # sector_stats_df.to_csv(f'data/sector_stats_{config.ROAD_SEED}.csv')
+
+            summary_stats_df.to_pickle(f'data/summary_stats_{config.ROAD_SEED}.pk')
+            summary_stats_df.to_csv(f'data/summary_stats_{config.ROAD_SEED}.csv')
             return
 
         # move and draw zombies
@@ -242,7 +253,7 @@ def main():
         # show info
         if debug.SHOW_INFO:
             debug_labels = debug.labels(screen_data, input_data,
-                                        path_data, selection, city, survivors, zombies)
+                                        path_data, selection, city, survivors, zombies, iteration)
 
             for x in range(len(debug_labels[0])):
                 label_pos = (10, 10 + x * 15)
@@ -276,6 +287,7 @@ def get_raw_stats_for_iteration(iteration, survivors, zombies):
             'zombies': z,
             'corpses': c,
         }
+
 
 def get_entity_sector_counts(survivors, zombies):
     sector_counts = {}

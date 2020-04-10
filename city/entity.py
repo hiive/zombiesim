@@ -105,8 +105,10 @@ class Entity(ABC):
                 near_dead_things = any([True for e in link.entities if e.is_dead and
                                         distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
                 if near_dead_things:
-                    dead_links.add(link)
+                    if not self.is_dead:
+                        dead_links.add(link)
                     self.near_dead_things = True
+
                 near_live_things = any([True for e in link.entities if not e.is_dead and
                                         distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
                 if near_live_things:
@@ -135,7 +137,10 @@ class Entity(ABC):
                                                                              if type(e).__name__ == target_entity_type])
                                                                              ))
 
-                    self.road = density_sorted_roads[0]
+                    min_density = min([len(link.entities) for link in density_sorted_roads])
+                    density_sorted_roads = [link for link in density_sorted_roads if len(link.entities) == min_density]
+                    ix = random.randint(0, len(density_sorted_roads) - 1)
+                    self.road = density_sorted_roads[ix]
 
                 self.road.entities.append(self)
 
