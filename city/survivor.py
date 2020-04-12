@@ -70,7 +70,7 @@ class Survivor(Entity):
         if not self.is_panicked:
             panic_time = 0
 
-            if self.near_dead_things:
+            if self.is_near_dead_things:
                 panic_probability = config.SURVIVOR_SEES_DEATH_PANIC_PROBABILITY
             else:
                 panic_probability = self.__check_for_secondary_panic()

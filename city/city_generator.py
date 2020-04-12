@@ -91,6 +91,7 @@ def main():
     iteration = 0
     last_gathered_iteration = 0
     raw_stats = []
+    eligible_count_per_iteration = []
     while running:
         if pygame.time.get_ticks() - prev_time < 16:
             continue
@@ -172,7 +173,7 @@ def main():
             for point in poly:
                 temp.append(drawing.world_to_screen(point, screen_data.pan, screen_data.zoom))
             pygame.draw.polygon(screen_data.screen, color, temp)
-            color = (color[0], color[1]-11, color[2] + 7)
+            color = (color[0], color[1] - 11, color[2] + 7)
             if color[1] < 0:
                 color = (color[0], 255, color[2])
             if color[2] > 255:
@@ -205,20 +206,37 @@ def main():
             drawing.draw_roads_path(path_data, screen_data)
 
         # gather entity stats
+        eligible_count = get_eligible_count_for_iteration(zombies)
         if iteration % 12 == 0:  # assume one minute per iteration
             last_gathered_iteration = iteration
-            raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
+            rs = get_raw_stats_for_iteration(iteration, survivors, zombies)
+            raw_stats.extend(rs)
+            eligible_count_per_iteration.append(eligible_count)
+            # sector_eligible_sets_per_iteration.append((iteration, es))
 
         # s, i, p, z, c
-        any_survivors = any([1 for s in survivors if not s.is_infected])
+        any_survivors = any([True for s in survivors if not s.is_infected])
         if not any_survivors:  # iteration == 62:
             if iteration > last_gathered_iteration:
-                raw_stats.extend(get_raw_stats_for_iteration(iteration, survivors, zombies))
+                rs = get_raw_stats_for_iteration(iteration, survivors, zombies)
+                raw_stats.extend(rs)
+                eligible_count_per_iteration.append(eligible_count)
+                # sector_eligible_sets_per_iteration.append((iteration, es))
             raw_stats_df = pd.DataFrame(data=raw_stats)
             # sector_stats_df = raw_stats_df.groupby(['iteration', 'sector_x', 'sector_y']).aggregate(np.sum)
 
             summary_columns = ['iteration', 'survivors', 'infected', 'panicked', 'zombies', 'corpses']
             summary_stats_df = raw_stats_df[summary_columns].groupby(['iteration']).aggregate(np.sum)
+            # calculate summary eligibles
+            """
+            eligible_counts = []
+            for i, ses in sector_eligible_sets_per_iteration:
+                city_set = set()
+                for s in ses.values():
+                    city_set.update(s)
+                eligible_counts.append(len(city_set))
+            """
+            summary_stats_df['eligible'] = eligible_count_per_iteration
 
             raw_stats_df.to_pickle(f'data/raw_stats_{config.ROAD_SEED}.pk')
             raw_stats_df.to_csv(f'data/raw_stats_{config.ROAD_SEED}.csv')
@@ -253,7 +271,7 @@ def main():
         # show info
         if debug.SHOW_INFO:
             debug_labels = debug.labels(screen_data, input_data,
-                                        path_data, selection, city, survivors, zombies, iteration)
+                                        path_data, selection, city, survivors, zombies, eligible_count, iteration)
 
             for x in range(len(debug_labels[0])):
                 label_pos = (10, 10 + x * 15)
@@ -275,9 +293,10 @@ def main():
 
 def get_raw_stats_for_iteration(iteration, survivors, zombies):
     entity_counts_by_sector = get_entity_sector_counts(survivors, zombies)
+    raw_stats = []
     for sector in entity_counts_by_sector.keys():
         s, i, p, z, c = entity_counts_by_sector[sector]
-        yield {
+        raw_stats.append({
             'iteration': iteration,
             'sector_x': sector[0],
             'sector_y': sector[1],
@@ -286,7 +305,17 @@ def get_raw_stats_for_iteration(iteration, survivors, zombies):
             'panicked': p,
             'zombies': z,
             'corpses': c,
-        }
+        })
+    return raw_stats
+
+
+def get_eligible_count_for_iteration(zombies):
+    eligible = set()
+    for z in zombies:
+        eligible.update([e.id for e in z.nearby_entities if (isinstance(e, Survivor) and
+                                                             not e.is_dead and
+                                                             not e.is_infected)])
+    return len(eligible)
 
 
 def get_entity_sector_counts(survivors, zombies):
@@ -299,10 +328,13 @@ def get_entity_sector_counts(survivors, zombies):
     zombie_count = sum([1 for z in zombies if not z.is_corpse()])
 
     """
+    # sector_eligible_sets = {}
+    # process survivors
     for survivor in survivors:
         sector = sectors.containing_sector((survivor.x, survivor.y))
         if sector not in sector_counts.keys():
             sector_counts[sector] = (0, 0, 0, 0, 0)
+            # sector_eligible_sets[sector] = set()
         s, i, p, z, c = sector_counts[sector]
         s += 1
         if survivor.is_infected:
@@ -311,17 +343,32 @@ def get_entity_sector_counts(survivors, zombies):
             p += 1
         sector_counts[sector] = s, i, p, z, c
 
+    # process zombies
     for zombie in zombies:
         sector = sectors.containing_sector((zombie.x, zombie.y))
         if sector not in sector_counts.keys():
             sector_counts[sector] = (0, 0, 0, 0, 0)
+            # sector_eligible_sets[sector] = set()
         s, i, p, z, c = sector_counts[sector]
         if zombie.is_corpse():
             c += 1
         else:
             z += 1
+        """
+        sector_eligible_sets[sector].update([e.id for e in zombie.nearby_entities if (isinstance(e, Survivor) and
+                                                                                      not e.is_dead and
+                                                                                      not e.is_infected)])
+        """
         sector_counts[sector] = s, i, p, z, c
-    return sector_counts
+
+    # process eligibles
+    """
+    for sector in sector_counts.keys():
+        s, i, p, z, c, e = sector_counts[sector]
+        e = len(sector_eligible_sets[sector])
+        sector_counts[sector] = s, i, p, z, c, e
+    """
+    return sector_counts  # , sector_eligible_sets
 
 
 def handle_keys_debug(key):

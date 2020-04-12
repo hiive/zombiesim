@@ -36,7 +36,7 @@ class Zombie(Entity):
             self.init_delay -= 1
             return
 
-        speed = config.ZOMBIE_HUNT_SPEED if self.near_live_things else config.ZOMBIE_SPEED
+        speed = config.ZOMBIE_HUNT_SPEED if self.is_near_live_things else config.ZOMBIE_SPEED
         self.random_wander(speed=speed,
                            direction_change_probability=config.ZOMBIE_WANDER_DIRECTION_CHANGE_PROBABILITY,
                            entity_check_range=config.ZOMBIE_HUNT_RANGE,
@@ -46,9 +46,12 @@ class Zombie(Entity):
 
         # check for survivors nearby
         victim_and_distance = None
-        for survivor in [e for e in self.road.entities if type(e).__name__ == 'Survivor']:
-            if survivor.is_dead:  # or survivor.is_infected:
-                continue  # dead
+        #e_vs = [e for e in self.road.entities if (not e.is_dead and
+        #                                          distance((self.x, self.y), (e.x, e.y)) < config.ZOMBIE_ATTACK_RANGE)]
+
+        evs = [e for e in self.nearby_entities if (not e.is_dead and
+                                                   distance((self.x, self.y), (e.x, e.y)) < config.ZOMBIE_ATTACK_RANGE)]
+        for survivor in evs:
             d = distance((self.x, self.y), (survivor.x, survivor.y))
             if d >= config.ZOMBIE_ATTACK_RANGE:
                 continue  # out of attack range
@@ -76,4 +79,5 @@ class Zombie(Entity):
             victim.infect()
 
         if random.random() < config.ZOMBIE_DESTRUCTION_PROBABILITY * distance_factor:
+            self.nearby_entities = []
             self.is_destroyed = True

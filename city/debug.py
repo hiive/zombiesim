@@ -12,7 +12,7 @@ class RoadViews(enum.Enum):
     Branches = enum.auto()
 
 
-def labels(screen_data, input_data, path_data, selection, city, survivors, zombies, iteration):
+def labels(screen_data, input_data, path_data, selection, city, survivors, zombies, eligible_count, iteration):
     mouse_world_pos = drawing.screen_to_world(input_data.pos, screen_data.pan, screen_data.zoom)
 
     debug_labels_left = []
@@ -39,6 +39,7 @@ def labels(screen_data, input_data, path_data, selection, city, survivors, zombi
     debug_labels_left.append(f"Iteration: {iteration}")
     debug_labels_left.append("")
     debug_labels_left.append(f"Survivors: {survivor_count}")
+    debug_labels_left.append(f"  Eligible: {eligible_count}")
     debug_labels_left.append(f"  Infected: {infected_count}")
     debug_labels_left.append(f"  Panicked: {panicked_count}")
     debug_labels_left.append(f"Corpses: {corpse_count}")

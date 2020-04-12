@@ -40,11 +40,18 @@ class Entity(ABC):
         self.is_dead = False
         self.is_panicked = False
         self.is_infected = False
-        self.near_dead_things = False
-        self.near_live_things = False
+        self.is_near_dead_things = False
+        self.is_near_live_things = False
         self.incubation_time_remaining = None
         self.panic_time_remaining = 0
         self.panic_time_initial = 0
+        self.nearby_entities = []
+
+    def __str__(self):
+        return f'id:{self.id} ({type(self).__name__})'
+
+    def __repr__(self):
+        return self.__str__()
 
     def get_unit_road_vector(self):
         sx, sy = self.road.start
@@ -90,34 +97,45 @@ class Entity(ABC):
         elif random.random() < direction_change_probability:
             self.direction = - self.direction
 
-        # avoid going down roads with dead things
+        # check for nearby entities
         if entity_check_range > 0:
+            self.nearby_entities.clear()
             # add current road to list
             if links is None:
                 links = [self.road]
             else:
                 links.append(self.road)
-            dead_links = set()
+            ignored_links = set()
             # figure out if we're near anything dead/alive
-            self.near_dead_things = False
-            self.near_live_things = False
+            self.is_near_dead_things = False
+            self.is_near_live_things = False
+            nearby_dead_entities = []
+            nearby_live_entities = []
             for link in links:
-                near_dead_things = any([True for e in link.entities if e.is_dead and
-                                        distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
-                if near_dead_things:
+                nde = [e for e in link.entities if (e.is_dead and
+                                                    distance((self.x, self.y), (e.x, e.y)) < entity_check_range)]
+                is_near_dead_things = any(nde)
+                if is_near_dead_things:
+                    nearby_dead_entities.extend(nde)
                     if not self.is_dead:
-                        dead_links.add(link)
-                    self.near_dead_things = True
+                        ignored_links.add(link)
 
-                near_live_things = any([True for e in link.entities if not e.is_dead and
-                                        distance((self.x, self.y), (e.x, e.y)) < entity_check_range])
-                if near_live_things:
-                    self.near_live_things = True
+                nle = [e for e in link.entities if (not e.is_dead and
+                                                    distance((self.x, self.y), (e.x, e.y)) < entity_check_range)]
+                is_near_live_things = any(nle)
+                if is_near_live_things:
+                    nearby_live_entities.extend(nle)
+            self.is_near_live_things = any(nearby_live_entities)
+            self.is_near_dead_things = any(nearby_dead_entities)
+            self.nearby_entities.extend(nearby_live_entities)
+            self.nearby_entities.extend(nearby_dead_entities)
+            # if any(self.nearby_entities):
+            #     print(f'{self}: {self.nearby_entities}')
 
             # remove current road from list.
             links.remove(self.road)
             # remove any dead links
-            links = list(set(links) - dead_links)
+            links = list(set(links) - ignored_links)
 
         # if links is set, then we're near the beginning/end of a road.
         # it may be empty, but we need to process it
