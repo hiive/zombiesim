@@ -20,9 +20,16 @@ class Survivor(Entity):
         self.speed = config.SURVIVOR_SPEED
         self.target_entity_type = Zombie
 
-    def infect(self):
+    def infect(self, incubation_time=None):
         self.is_infected = True
-        self.incubation_time_remaining = random.randint(0, config.INFECTED_INCUBATION_MAX_TIME)
+
+        if incubation_time is not None:
+            self.incubation_time_remaining = max(1, incubation_time)
+        else:
+            self.incubation_time_remaining = random.randint(0, config.INFECTED_INCUBATION_MAX_TIME)
+
+        self.just_infected = True
+        return self.incubation_time_remaining
 
     def draw(self, screen_data: ScreenData):
         sf = (self.speed / config.SURVIVOR_SPEED) - 1

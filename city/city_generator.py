@@ -75,15 +75,19 @@ def main():
     survivors = []
     for _ in range(0, config.INIT_SURVIVORS):
         survivors.append(Survivor(city, road_population_densities=road_population_densities))
-
+    total_infected_count = 1
+    total_infection_duration = 0
+    total_perma_corpse_count = 0
     for _ in range(0, config.INIT_INFECTED):
         infected = Survivor(city)
         infected.infect()
-        survivors.append(infected)
+        total_infection_duration += survivors.append(infected)
 
     zombies = []
     for _ in range(0, config.INIT_ZOMBIES):
-        zombies.append(Zombie(city))
+        zombies.append(Zombie(city, init_delay=1))
+        #infected = Survivor(city)
+        #infected.infect(incubation_time=1)
 
     prev_time = pygame.time.get_ticks()
 
@@ -206,7 +210,7 @@ def main():
             drawing.draw_roads_path(path_data, screen_data)
 
         # gather entity stats
-        eligible_count = get_eligible_count_for_iteration(zombies)
+        eligible_count, r0 = get_eligible_count_for_iteration(zombies)
         if iteration % 12 == 0:  # assume one minute per iteration
             last_gathered_iteration = iteration
             rs = get_raw_stats_for_iteration(iteration, survivors, zombies)
@@ -215,7 +219,7 @@ def main():
             # sector_eligible_sets_per_iteration.append((iteration, es))
 
         # s, i, p, z, c
-        any_survivors = any([True for s in survivors if not s.is_infected])
+        any_survivors = any(survivors)  # any([True for s in survivors if not s.is_infected])
         if not any_survivors:  # iteration == 62:
             if iteration > last_gathered_iteration:
                 rs = get_raw_stats_for_iteration(iteration, survivors, zombies)
@@ -246,6 +250,19 @@ def main():
 
             summary_stats_df.to_pickle(f'data/summary_stats_{config.ROAD_SEED}.pk')
             summary_stats_df.to_csv(f'data/summary_stats_{config.ROAD_SEED}.csv')
+
+            print()
+            print(f'r0    : {r0}')
+            print()
+            """
+            print(f'Alpha : {total_perma_corpse_count/iteration}')
+            print(f'Beta  : {total_infected_count/iteration}')
+            print(f'Zeta  : {total_infected_count/total_infection_duration}')
+            print()
+            """
+            print(f'np.random check: {np.random.randint(0, 100)}')
+            print(f'random check   : {random.randint(0, 100)}')
+
             return
 
         # move and draw zombies
@@ -258,15 +275,28 @@ def main():
             survivor.move()
             survivor.draw(screen_data)
 
-        # check for new zombies
+        # check for new zombies and just infected
         for survivor in list(survivors):
             if not survivor.is_dead:
+                if survivor.just_infected:
+                    survivor.just_infected = False
+                    total_infection_duration += survivor.incubation_time_remaining
+                    total_infected_count += 1
                 continue
             zombie = Zombie(city, survivor.road, survivor.x, survivor.y)
             zombie.id = survivor.id
-            zombie.is_destroyed = random.random() > config.ZOMBIE_RAISE_CHANCE
+            is_destroyed = random.random() > config.ZOMBIE_RAISE_CHANCE
+            if is_destroyed:
+                zombie.destroy()
             zombies.append(zombie)
             survivors.remove(survivor)
+
+        for zombie in zombies:
+            if zombie.just_destroyed:
+                total_perma_corpse_count += 1
+                zombie.just_destroyed = False
+                # print(total_perma_corpse_count)
+
 
         # show info
         if debug.SHOW_INFO:
@@ -311,11 +341,15 @@ def get_raw_stats_for_iteration(iteration, survivors, zombies):
 
 def get_eligible_count_for_iteration(zombies):
     eligible = set()
+    r0 = 0
     for z in zombies:
         eligible.update([e.id for e in z.nearby_entities if (isinstance(e, Survivor) and
                                                              not e.is_dead and
                                                              not e.is_infected)])
-    return len(eligible)
+        r0 += z.infected_count
+    r0 /= len(zombies)
+
+    return len(eligible), r0
 
 
 def get_entity_sector_counts(survivors, zombies):

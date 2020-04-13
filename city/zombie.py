@@ -9,16 +9,27 @@ from .vectors import distance
 
 class Zombie(Entity):
 
-    def __init__(self, city, road=None, x=None, y=None, road_population_densities=None):
+    def __init__(self, city, road=None, x=None, y=None, road_population_densities=None, init_delay=None):
         super().__init__(city, road=road, x=x, y=y, road_population_densities=road_population_densities)
-        self.init_delay = config.ZOMBIE_RAISE_DELAY
+        if init_delay is None:
+            self.init_delay = random.randint(1, config.ZOMBIE_RAISE_DELAY)
+        else:
+            self.init_delay = max(init_delay, 1)
+
         self.is_dead = True
         self.is_infected = True
         self.is_panicked = False
         self.is_destroyed = False
+        self.just_destroyed = False
+        self.infected_count = 0
 
     def is_corpse(self):
         return self.init_delay > 0 or self.is_destroyed
+
+    def destroy(self):
+        self.nearby_entities = []
+        self.is_destroyed = True
+        self.just_destroyed = True
 
     def draw(self, screen_data: ScreenData):
         if self.is_corpse():
@@ -73,11 +84,9 @@ class Zombie(Entity):
         distance_factor = 1.0 - (victim_distance / (attack_modifier * config.ZOMBIE_ATTACK_RANGE))
 
         r = random.random()
-        if r < config.ZOMBIE_KILL_PROBABILITY * distance_factor:
-            victim.is_dead = True
-        elif r < config.ZOMBIE_WOUND_PROBABILITY * distance_factor:
+        if r < config.ZOMBIE_INFECT_PROBABILITY * distance_factor:
             victim.infect()
+            self.infected_count += 1
 
         if random.random() < config.ZOMBIE_DESTRUCTION_PROBABILITY * distance_factor:
-            self.nearby_entities = []
-            self.is_destroyed = True
+            self.destroy()

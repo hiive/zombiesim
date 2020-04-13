@@ -46,6 +46,7 @@ class Entity(ABC):
         self.panic_time_remaining = 0
         self.panic_time_initial = 0
         self.nearby_entities = []
+        self.just_infected = False
 
     def __str__(self):
         return f'id:{self.id} ({type(self).__name__})'
