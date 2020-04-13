@@ -26,7 +26,9 @@ class Survivor(Entity):
         if incubation_time is not None:
             self.incubation_time_remaining = max(1, incubation_time)
         else:
-            self.incubation_time_remaining = random.randint(0, config.INFECTED_INCUBATION_MAX_TIME)
+            itr = random.randint(0, config.INFECTED_INCUBATION_MAX_TIME)
+            itr = itr if self.incubation_time_remaining is None else min(itr, self.incubation_time_remaining)
+            self.incubation_time_remaining = itr
 
         self.just_infected = True
         return self.incubation_time_remaining
