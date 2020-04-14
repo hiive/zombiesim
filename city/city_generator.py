@@ -297,7 +297,6 @@ def main():
                 zombie.just_destroyed = False
                 # print(total_perma_corpse_count)
 
-
         # show info
         if debug.SHOW_INFO:
             debug_labels = debug.labels(screen_data, input_data,
@@ -384,7 +383,7 @@ def get_entity_sector_counts(survivors, zombies):
             sector_counts[sector] = (0, 0, 0, 0, 0)
             # sector_eligible_sets[sector] = set()
         s, i, p, z, c = sector_counts[sector]
-        if zombie.is_corpse():
+        if zombie.is_destroyed:
             c += 1
         else:
             z += 1

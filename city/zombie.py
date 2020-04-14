@@ -33,7 +33,7 @@ class Zombie(Entity):
 
     def draw(self, screen_data: ScreenData):
         if self.is_corpse():
-            draw_corpse(self.x, self.y, screen_data)
+            draw_corpse(self.x, self.y, screen_data, self.is_destroyed)
         else:
             draw_zombie(self.x, self.y, screen_data)
         # draw_label_world((f"{self.id}", (self.x+10, self.y)), screen_data, 1)

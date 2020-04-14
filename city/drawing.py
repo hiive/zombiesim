@@ -135,8 +135,9 @@ def draw_zombie(x, y, data: ScreenData):
     pygame.draw.circle(data.screen, (0, 192, 0), world_to_screen((x, y), data.pan, data.zoom), config.ENTITY_SIZE)
 
 
-def draw_corpse(x, y, data: ScreenData):
-    pygame.draw.circle(data.screen, (0, 128, 255), world_to_screen((x, y), data.pan, data.zoom), config.ENTITY_SIZE)
+def draw_corpse(x, y, data: ScreenData, is_destroyed):
+    color = (255, 255, 255) if is_destroyed else (0, 128, 255)
+    pygame.draw.circle(data.screen, color, world_to_screen((x, y), data.pan, data.zoom), config.ENTITY_SIZE)
 
 
 def lerp_(v1, v2, f):

@@ -31,7 +31,8 @@ def labels(screen_data, input_data, path_data, selection, city, survivors, zombi
     survivor_count = len(survivors)  # sum([1 for s in survivors if not s.is_infected])
     infected_count = sum([1 for s in survivors if s.is_infected])
     panicked_count = sum([1 for s in survivors if s.is_panicked])
-    corpse_count = sum([1 for z in zombies if z.is_corpse()])
+    corpse_count = sum([1 for z in zombies if z.is_destroyed])
+    pending_zombie_count = sum([1 for z in zombies if z.is_corpse()]) - corpse_count
     zombie_count = sum([1 for z in zombies if not z.is_corpse()])
 
     debug_labels_left.append("")
@@ -43,6 +44,7 @@ def labels(screen_data, input_data, path_data, selection, city, survivors, zombi
     debug_labels_left.append(f"  Infected: {infected_count}")
     debug_labels_left.append(f"  Panicked: {panicked_count}")
     debug_labels_left.append(f"Corpses: {corpse_count}")
+    debug_labels_left.append(f"Pre-Z  : {pending_zombie_count}")
     debug_labels_left.append(f"Zombies: {zombie_count}")
 
 
